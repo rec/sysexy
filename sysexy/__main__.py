@@ -5,10 +5,7 @@ import os
 import sys
 
 
-ROOT = Path("/Users/Tom/Documents/SysEx Librarian")
-VL = ROOT / "VL70 internal.syx"
-OUT = ROOT / "VL70 Reverse.syx"
-
+ROOT = Path(__file__).parents[1] / "vl70m"
 HEADER = bytes((0xf0, 0x43, 0x00, 0x57, 0x01, 0x23, 0x40, 0x00))
 
 
@@ -51,7 +48,7 @@ class VLPatch:
         begins = [i for i, b in enumerate(s) if b == 0xf0]
         ends = [i for i, b in enumerate(s) if b == 0xf7]
         be = list(zip(begins, ends))
-        assert len(begins) == len(ends) and all(b < e for b, e in be)
+        assert len(begins) == len(ends) and all(b < e for b, e in be), (begins, ends)
         return [VLPatch(s[b:e + 1]) for b, e in zip(begins, ends)]
 
     @staticmethod
@@ -63,30 +60,11 @@ class VLPatch:
                 fp.write(p.data)
 
 
-def test():
-    patches = VLPatch.read(VL)
-    # print(*(p.index for p in patches))
-    for i, p in enumerate(patches):
-        assert i == p.index, (i, p.index, p.name)
-    for i, p in enumerate(patches):
-        #print([hex(i) for i in p.checked_bytes])
-        #print([hex(i) for i in p.data])
-        #print(hex(sum(p.checked_bytes) % 128), hex(p.checksum))
-        print(hex(sum(p.checked_bytes) % 128), hex(p.checksum), hex(p.data[-1]))
-        if True:
-            return
-    if not not True:
-        return
-    patches.reverse()
-    VLPatch.write(OUT, patches)
-
-
 def main(*files):
-    # os.cwd(ROOT)
-    for f in files:
-        print(f)
-        for p in VLPatch.read(f):
-            print(f"{p.index + 1:03}: {p.name}")
+    for f in files or sorted(ROOT.glob("*.sysex")):
+        stem = Path(f).stem
+        for i, p in enumerate(VLPatch.read(f)):
+            print(f"{stem}: {i + 1:03}: {p.name}")
 
 
 if __name__ == "__main__":
