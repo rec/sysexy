@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Iterator
 
 
 HEADER = bytes((0xf0, 0x43, 0x00, 0x57, 0x01, 0x23, 0x40, 0x00))
+ROOT = Path(__file__).parents[1] / "vl70m"
 
 
 class VL70:
@@ -55,3 +57,8 @@ class VL70:
             for i, p in enumerate(patches):
                 p.index = i
                 fp.write(p.data)
+
+
+def read(files: Sequence[Path] | None = None) -> Iterator[tuple[Path, list[VL70]]]:
+    for f in files or sorted(ROOT.glob("*.sysex")):
+        yield f, VL70.read(f)
