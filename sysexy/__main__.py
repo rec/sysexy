@@ -61,6 +61,9 @@ class VLPatch:
 
 
 def main(*files):
+    # TODO: generate patch files from descriptions
+    # TODO: read tag files
+
     for f in files or sorted(ROOT.glob("*.sysex")):
         stem = Path(f).stem
         for i, p in enumerate(VLPatch.read(f)):
