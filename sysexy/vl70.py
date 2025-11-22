@@ -28,6 +28,14 @@ class VL70:
         self.data[-2] = i % 128
 
     @property
+    def device_number(self) -> int:
+        return int(self.data[2])
+
+    @device_number.setter
+    def device_number(self, device_number: int) -> None:
+        self.data[2] = device_number % 128
+
+    @property
     def index(self) -> int:
         return int(self.data[8])
 
