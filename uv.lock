@@ -32,7 +32,7 @@ sdist = { url = "https://files.pythonhosted.org/packages/dd/ee/0f91965dcc471714c
 [[package]]
 name = "sysexy"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "mido" },
     { name = "python-rtmidi" },
