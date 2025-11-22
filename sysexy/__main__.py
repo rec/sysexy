@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+import os
+import sys
 
 
 ROOT = Path("/Users/Tom/Documents/SysEx Librarian")
@@ -16,15 +18,6 @@ class VLPatch:
         assert len(data) == 174
         assert data[:2] == HEADER[:2], data[:2]
         # assert data[3:9] == HEADER[3:], (data[3:9], HEADER[3:])
-        self.name = data[9:17]
-
-    @property
-    def index(self) -> int:
-        return int(self.data[8])
-
-    @index.setter
-    def index(self, index: int) -> None:
-        self.data[8] = index
 
     @property
     def checked_bytes(self) -> bytes:
@@ -32,10 +25,28 @@ class VLPatch:
 
     @property
     def checksum(self) -> int:
-        return self.data[-2]
+        return int(self.data[-2])
+
+    @checksum.setter
+    def checksum(self, i: int) -> int:
+        self.data[-2] = i % 128
+
+    @property
+    def index(self) -> int:
+        return int(self.data[8])
+
+    @index.setter
+    def index(self, index: int) -> None:
+        self.checksum -= index - self.data[8]
+        self.data[8] = index
+
+    @property
+    def name(self) -> int:
+        return self.data[9:17].decode()
 
     @staticmethod
-    def read(p: Path) -> list[VLPatch]:
+    def read(p: Path | str) -> list[VLPatch]:
+        p = Path(p)
         s = p.read_bytes()
         begins = [i for i, b in enumerate(s) if b == 0xf0]
         ends = [i for i, b in enumerate(s) if b == 0xf7]
@@ -52,7 +63,7 @@ class VLPatch:
                 fp.write(p.data)
 
 
-def main():
+def test():
     patches = VLPatch.read(VL)
     # print(*(p.index for p in patches))
     for i, p in enumerate(patches):
@@ -70,6 +81,13 @@ def main():
     VLPatch.write(OUT, patches)
 
 
+def main(*files):
+    # os.cwd(ROOT)
+    for f in files:
+        print(f)
+        for p in VLPatch.read(f):
+            print(f"{p.index + 1:03}: {p.name}")
+
 
 if __name__ == "__main__":
-    main()
+    main(*sys.argv[1:])
