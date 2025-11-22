@@ -11,7 +11,7 @@ dependencies = [
 ]
 
 [project.scripts]
-sysexy = "sysexy.__main__:main"
+sysexy = "sysexy.__main__:app"
 
 [build-system]
 requires = ["hatchling"]
