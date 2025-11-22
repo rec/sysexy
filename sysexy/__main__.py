@@ -1,72 +1,21 @@
 from __future__ import annotations
 
 from pathlib import Path
-import os
 import sys
+
+from . vl70 import VL70
 
 
 ROOT = Path(__file__).parents[1] / "vl70m"
-HEADER = bytes((0xf0, 0x43, 0x00, 0x57, 0x01, 0x23, 0x40, 0x00))
 
 
-class VLPatch:
-    def __init__(self, data: bytes) -> None:
-        self.data = bytearray(data)
-        assert len(data) == 174
-        assert data[:2] == HEADER[:2], data[:2]
-        # assert data[3:9] == HEADER[3:], (data[3:9], HEADER[3:])
-
-    @property
-    def checked_bytes(self) -> bytes:
-        return self.data[7:-2]
-
-    @property
-    def checksum(self) -> int:
-        return int(self.data[-2])
-
-    @checksum.setter
-    def checksum(self, i: int) -> int:
-        self.data[-2] = i % 128
-
-    @property
-    def index(self) -> int:
-        return int(self.data[8])
-
-    @index.setter
-    def index(self, index: int) -> None:
-        self.checksum -= index - self.data[8]
-        self.data[8] = index
-
-    @property
-    def name(self) -> int:
-        return self.data[9:17].decode()
-
-    @staticmethod
-    def read(p: Path | str) -> list[VLPatch]:
-        p = Path(p)
-        s = p.read_bytes()
-        begins = [i for i, b in enumerate(s) if b == 0xf0]
-        ends = [i for i, b in enumerate(s) if b == 0xf7]
-        be = list(zip(begins, ends))
-        assert len(begins) == len(ends) and all(b < e for b, e in be), (begins, ends)
-        return [VLPatch(s[b:e + 1]) for b, e in zip(begins, ends)]
-
-    @staticmethod
-    def write(p: Path, patches: Sequence[VLPatch]) -> None:
-        with p.open("wb") as fp:
-            print(p)
-            for i, p in enumerate(patches):
-                p.index = i
-                fp.write(p.data)
-
-
-def main(*files):
+def main(*files: str) -> None:
     # TODO: generate patch files from descriptions
     # TODO: read tag files
 
     for f in files or sorted(ROOT.glob("*.sysex")):
         stem = Path(f).stem
-        for i, p in enumerate(VLPatch.read(f)):
+        for i, p in enumerate(VL70.read(f)):
             print(f"{stem}: {i + 1:03}: {p.name}")
 
 
