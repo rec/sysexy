@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import cached_property
 from pathlib import Path
 from typing import Iterator
 
@@ -15,7 +16,7 @@ class VL70:
         assert data[:2] == HEADER[:2], data[:2]
         # assert data[3:9] == HEADER[3:], (data[3:9], HEADER[3:])
 
-    @property
+    @cached_property
     def checked_bytes(self) -> bytes:
         return self.data[7:-2]
 
@@ -44,7 +45,7 @@ class VL70:
         self.checksum -= index - self.data[8]
         self.data[8] = index
 
-    @property
+    @cached_property
     def name(self) -> int:
         return self.data[9:17].decode()
 
@@ -70,3 +71,8 @@ class VL70:
 def read(files: Sequence[Path] | None = None) -> Iterator[tuple[Path, list[VL70]]]:
     for f in files or sorted(ROOT.glob("*.sysex")):
         yield f, VL70.read(f)
+
+
+@dataclass
+class Patches:
+    patches: dict[str, list[VL70]]
