@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from pathlib import Path
 import sys
-
-from . import app
-from . import vl70
+from pathlib import Path
 
 from typer import Argument, Option
+
+from . import app, vl70
 
 
 @app.command("list", help="List patches")

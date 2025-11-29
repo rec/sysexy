@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from typer import Typer
 
 ROOT = Path(__file__).parents[1] / "vl70m"
