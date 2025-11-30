@@ -5,9 +5,10 @@ from functools import cached_property
 from pathlib import Path
 from typing import Iterator, Sequence
 
-HEADER = bytes((0xF0, 0x43, 0x00, 0x57, 0x01, 0x23, 0x40, 0x00))
-ROOT = Path(__file__).parents[1] / "vl70m"
+from . import ROOT
 
+HEADER = bytes((0xF0, 0x43, 0x00, 0x57, 0x01, 0x23, 0x40, 0x00))
+# TODO
 
 class VL70:
     def __init__(self, data: bytes) -> None:
@@ -66,14 +67,15 @@ class VL70:
     @staticmethod
     def write(p: Path, patches: Sequence[VL70]) -> None:
         with p.open("wb") as fp:
-            print(p)
             for i, patch in enumerate(patches):
                 patch.index = i
                 fp.write(patch.data)
 
 
-def read(files: Sequence[Path] | None = None) -> Iterator[tuple[Path, list[VL70]]]:
-    for f in files or sorted(ROOT.glob("*.sysex")):
+def read(
+    files: Sequence[Path] | None = None, root: Path = ROOT
+) -> Iterator[tuple[Path, list[VL70]]]:
+    for f in files or sorted(root.glob("**/*.sysex")):
         yield f, VL70.read(f)
 
 

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from . import app, invert, list_
+from . import app, invert, list_, write
 
-__all__ = ["app", "invert", "list_"]
+__all__ = ["app", "invert", "list_", "write"]
 
 
 # TODO: generate patch files from descriptions
