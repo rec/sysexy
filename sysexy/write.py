@@ -41,9 +41,12 @@ def write(
     ),
 ) -> None:
     with commands.open() if commands else sys.stdin as fp:
-        lines = [s for line in fp if (s := line.partition("#")[0].strip())]
+        if not (lines := [s for line in fp if (s := line.partition("#")[0].strip())]):
+            sys.exit("No commands found")
 
-    source = list(vl70.read(files))
+    if not (source := list(vl70.read(files))):
+        sys.exit("No patches found")
+
     banks = {f.stem: patches for f, patches in source}
     if len(banks) < len(source):
         _log(f"WARNING: {len(banks)=} < {len(source)=}:")
