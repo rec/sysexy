@@ -75,7 +75,7 @@ class VL70:
 def read(
     files: Sequence[Path] | None = None, root: Path | None = None
 ) -> Iterator[tuple[Path, list[VL70]]]:
-    for f in files or sorted((root or ROOT).glob("**/*.sysex")):
+    for f in files or sorted((root or ROOT).glob("**/*.syx")):
         yield f, VL70.read(f)
 
 

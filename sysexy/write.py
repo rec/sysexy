@@ -37,7 +37,7 @@ def write(
         help="A file full of commands, or use stdin",
     ),
     output: Path = Option(
-        TIMESTAMP + ".sysex", "--output", "-o", help="Output file for sysx"
+        TIMESTAMP + ".syx", "--output", "-o", help="Output file for sysex"
     ),
 ) -> None:
     with commands.open() if commands else sys.stdin as fp:
