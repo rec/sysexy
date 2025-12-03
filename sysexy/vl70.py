@@ -10,12 +10,16 @@ from . import ROOT
 HEADER = bytes((0xF0, 0x43, 0x00, 0x57, 0x01, 0x23, 0x40, 0x00))
 # TODO
 
+
 class VL70:
     def __init__(self, data: bytes) -> None:
         self.data = bytearray(data)
         assert len(data) == 174
         assert data[:2] == HEADER[:2], data[:2]
         # assert data[3:9] == HEADER[3:], (data[3:9], HEADER[3:])
+
+    def __repr__(self) -> str:
+        return f"{self.name} ({self.device_number})"
 
     def at_index(self, index: int) -> bytes:
         self.index = index
@@ -75,10 +79,7 @@ class VL70:
 def read(
     files: Sequence[Path] | None = None, root: Path | None = None
 ) -> Iterator[tuple[Path, list[VL70]]]:
-    for f in files or sorted((root or ROOT).glob("**/*.syx")):
+    root = root or ROOT
+    files = files or (*root.glob("prog/*.syx"), *root.glob("vl70/*.syx"))
+    for f in sorted(files):
         yield f, VL70.read(f)
-
-
-@dataclass
-class Patches:
-    patches: dict[str, list[VL70]]

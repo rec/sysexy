@@ -9,7 +9,7 @@ from typing import Any, NamedTuple, Optional
 
 from typer import Argument, Option
 
-from . import app, vl70
+from . import app, to_name, vl70
 from .vl70 import VL70
 
 TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -27,6 +27,17 @@ class WriteError(ValueError):
     pass
 
 
+@dataclass
+class NamedPatch:
+    bank_name: str
+    index: int
+    patch: VL70
+
+    def to_str(self, out_index: int | None = None):
+        out = "" if out_index is None else f"{out + 1:03}:"
+        return f"{self.bank_name}:{self.index + 1:03}  # {out}{self.patch}"
+
+
 @app.command(help="Write patches")
 def write(
     files: list[Path] = Argument(default=(), help="A list of patch files"),
@@ -40,10 +51,6 @@ def write(
         TIMESTAMP + ".syx", "--output", "-o", help="Output file for sysex"
     ),
 ) -> None:
-    with commands.open() if commands else sys.stdin as fp:
-        if not (lines := [s for line in fp if (s := line.partition("#")[0].strip())]):
-            sys.exit("No commands found")
-
     if not (source := list(vl70.read(files))):
         sys.exit("No patches found")
 
@@ -51,22 +58,29 @@ def write(
     if len(banks) < len(source):
         _log(f"WARNING: {len(banks)=} < {len(source)=}:")
 
-    expanded = [p for pp in banks.values() for p in pp]
-    patch_by_name = {p.name: p for p in expanded}
+    it = (NamedPatch(b, i + 1, p) for b, v in banks.items() for i, p in enumerate(v))
+    patch_by_name = {p.patch.name: p for p in it}
     if len(patch_by_name) < len(expanded):
         _log(f"WARNING: {len(patch_by_name)=} < {len(expanded)=}:")
 
     patches = []
     success = True
 
-    for line in lines:
-        try:
-            pp = _patch(banks, line) or [_get_approximate_key(patch_by_name, line)]
-        except WriteError as e:
-            _log("ERROR:", *e.args)
-            success = False
-        else:
-            patches.extend(pp)
+    with commands.open() if commands else sys.stdin as fp:
+        for line in fp:
+            if not (lp := line.partition("#")[0].strip()):
+                if commands:
+                    print(line)
+                continue
+            try:
+                nps = _patch(banks, lp) or [_get_approximate_key(patch_by_name, lp)]
+            except WriteError as e:
+                _log("ERROR:", *e.args)
+                success = False
+            else:
+                for named_patch in nps:
+                    patches.append(named_patch.patch)
+                    print(named_patch.to_str(len(patches)))
 
     if not success:
         sys.exit(-1)
@@ -82,33 +96,31 @@ def write(
     _log(f"Wrote {len(patches)} patch{'es' * (len(patches) != 1)} to {output}")
 
 
-def _patch(banks: dict[str, list[VL70]], name: str) -> list[VL70]:
-    # Match A003, b096-108, B096-b108
+def _patch(banks: dict[str, list[VL70]], name: str) -> list[NamedPatch]:
+    # Match A003, b096-108, B096-b108, A:003
+    name = name.replace(":", "")
     bank_name = name[0].upper()
-    if not (bank := banks.get(bank_name)):
+    if not (
+        (bank := banks.get(bank_name)))
+        and (parts := name[1:].split("-"))
+        and len(parts) <= 2
+    ):
         return []
 
-    parts = name[1:].split("-")
-    if not (0 < len(parts) <= 2):
+    begin, end = (parts + parts) if len(parts) == 1 else parts
+    try:
+        b, e = int(begin), int(end)
+    except ValueError:
         return []
 
-    if len(parts) == 1:
-        parts += parts
-
-    begin, end = parts
-    end = end[1:] if end.lower().startswith(bank_name) else end
-    if not (begin.isnumeric() and end.isnumeric()):
-        return []
-
-    b, e, lb = int(begin), int(end), len(bank) - 1
-    if not (0 < b < lb and 0 < e < lb):
+    if not (0 < b < (lb := len(bank) - 1) and 0 < e < lb):
         raise WriteError(f"{name=} failed: 0 < {b}, {e} < {lb}")
 
-    # These are inclusive, closed intervals.
-    return bank[b - 1 : e] if b <= e else bank[b - 1 : e - 2 : -1]
+    interval = range(b - 1, e) if b <= e else range(b - 1, e - 2, -1)
+    return [NamedPatch(bank_name, i + 1, bank[i]) for i in interval]
 
 
-def _get_approximate_key(d: dict[str, VL70], name: str) -> VL70:
+def _get_approximate_key(d: dict[str, NamedPatch], name: str) -> NamedPatch:
     for rule in (
         name.__eq__,
         lambda s: s.lower() == name.lower(),

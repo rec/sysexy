@@ -13,6 +13,9 @@ def list_(
     files: list[Path] = Argument((), help="A list of patch files"),
     root: Path | None = Option(None, "--root", "-r", help="Root directory for files"),
 ) -> None:
-    for f, patches in vl70.read(files, root):
-        for i, p in enumerate(patches):
-            print(f"{to_name(f, root):10}: {i + 1:03}: {p.name}")
+    for i, (f, patches) in enumerate(vl70.read(files, root)):
+        if i:
+            print()
+        print(f)
+        for j, p in enumerate(patches):
+            print(f"{to_name(f, root)}: {j + 1:03}: {p.name}")

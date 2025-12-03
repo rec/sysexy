@@ -11,9 +11,9 @@ app = Typer(
 )
 
 
-def to_name(p: Path, root: Path | None = None) -> str:
-    if p.is_absolute():
+def to_name(f: Path, root: Path | None = None) -> str:
+    if f.is_absolute():
         if not root:
-            return p.stem
-        p = p.relative_to(root)
-    return str(p.with_suffix(""))
+            return f.stem
+        f = f.relative_to(root)
+    return str(f.with_suffix(""))
