@@ -19,7 +19,7 @@ class VL70:
         # assert data[3:9] == HEADER[3:], (data[3:9], HEADER[3:])
 
     def __repr__(self) -> str:
-        return f"{self.name} ({self.device_number})"
+        return self.name
 
     def at_index(self, index: int) -> bytes:
         self.index = index

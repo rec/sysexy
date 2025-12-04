@@ -9,10 +9,10 @@ from typing import Any, NamedTuple, Optional
 
 from typer import Argument, Option
 
-from . import app, to_name, vl70
+from . import app, to_name, ROOT, vl70
 from .vl70 import VL70
 
-TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
+OUTPUT = Path(datetime.now().strftime("%Y%m%d_%H%M%S.syx"))
 _log = partial(print, file=sys.stderr)
 
 """
@@ -34,34 +34,28 @@ class NamedPatch:
     patch: VL70
 
     def to_str(self, out_index: int | None = None):
-        out = "" if out_index is None else f"{out + 1:03}:"
-        return f"{self.bank_name}:{self.index + 1:03}  # {out}{self.patch}"
+        out = "" if out_index is None else f"{out_index + 1:03}: "
+        return f"{self.bank_name}:{self.index + 1:03}  # {out}{self.patch}".strip()
 
 
 @app.command(help="Write patches")
 def write(
-    files: list[Path] = Argument(default=(), help="A list of patch files"),
-    commands: Path | None = Option(
-        None,
-        "--command-file",
-        "-c",
-        help="A file full of commands, or use stdin",
-    ),
-    output: Path = Option(
-        TIMESTAMP + ".syx", "--output", "-o", help="Output file for sysex"
-    ),
+    file: str  = Argument(help="Which patch files to use"),
+    commands: Path | None = Argument(None, help="A file of commands, or use stdin"),
+    output: Path = Option(OUTPUT, "--output", "-o", help="Output file for sysex"),
+    dry_run: bool = Option(False, "--dry-run", "-d", help="Print results, don't write")
 ) -> None:
+    assert file in ("prog", "vl70")
+    files = sorted(ROOT.glob(f"{file}/*.syx"))
     if not (source := list(vl70.read(files))):
         sys.exit("No patches found")
 
     banks = {f.stem: patches for f, patches in source}
-    if len(banks) < len(source):
-        _log(f"WARNING: {len(banks)=} < {len(source)=}:")
 
-    it = (NamedPatch(b, i + 1, p) for b, v in banks.items() for i, p in enumerate(v))
+    it = [NamedPatch(b, i, p) for b, v in banks.items() for i, p in enumerate(v)]
     patch_by_name = {p.patch.name: p for p in it}
-    if len(patch_by_name) < len(expanded):
-        _log(f"WARNING: {len(patch_by_name)=} < {len(expanded)=}:")
+    if len(patch_by_name) < len(it):
+        _log(f"WARNING: {len(patch_by_name)=} < {len(it)=}:")
 
     patches = []
     success = True
@@ -70,7 +64,7 @@ def write(
         for line in fp:
             if not (lp := line.partition("#")[0].strip()):
                 if commands:
-                    print(line)
+                    print(line, end="")
                 continue
             try:
                 nps = _patch(banks, lp) or [_get_approximate_key(patch_by_name, lp)]
@@ -79,8 +73,8 @@ def write(
                 success = False
             else:
                 for named_patch in nps:
-                    patches.append(named_patch.patch)
                     print(named_patch.to_str(len(patches)))
+                    patches.append(named_patch.patch)
 
     if not success:
         sys.exit(-1)
@@ -101,7 +95,7 @@ def _patch(banks: dict[str, list[VL70]], name: str) -> list[NamedPatch]:
     name = name.replace(":", "")
     bank_name = name[0].upper()
     if not (
-        (bank := banks.get(bank_name)))
+        (bank := banks.get(bank_name))
         and (parts := name[1:].split("-"))
         and len(parts) <= 2
     ):
@@ -117,7 +111,7 @@ def _patch(banks: dict[str, list[VL70]], name: str) -> list[NamedPatch]:
         raise WriteError(f"{name=} failed: 0 < {b}, {e} < {lb}")
 
     interval = range(b - 1, e) if b <= e else range(b - 1, e - 2, -1)
-    return [NamedPatch(bank_name, i + 1, bank[i]) for i in interval]
+    return [NamedPatch(bank_name, i, bank[i]) for i in interval]
 
 
 def _get_approximate_key(d: dict[str, NamedPatch], name: str) -> NamedPatch:
